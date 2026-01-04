@@ -143,9 +143,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView }) =
             .from('avatars')
             .getPublicUrl(filePath);
 
+        // FIX: Include email and full_name in the upsert payload to satisfy constraints
         const { error: dbError } = await supabase
             .from('users')
-            .upsert({ id: user.id, avatar_url: publicUrl });
+            .upsert({ 
+                id: user.id, 
+                avatar_url: publicUrl,
+                email: user.email,
+                full_name: userName 
+            });
         
         if (dbError) throw dbError;
 
