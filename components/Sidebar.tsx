@@ -25,7 +25,7 @@ interface SidebarProps {
 
 export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView }) => {
   const [role, setRole] = useState<'admin' | 'staff'>('staff');
-  const [userName, setUserName] = useState('Staff');
+  const [userName, setUserName] = useState('');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [pendingCount, setPendingCount] = useState(0);
   const [showProfileModal, setShowProfileModal] = useState(false);
@@ -40,25 +40,46 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView }) =
     // 1. Fetch User Profile
     const fetchUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
+      
       if (user) {
+        // Mặc định lấy từ Auth Metadata
+        let userRole: 'admin' | 'staff' = 'staff';
+        let displayName = user.user_metadata?.full_name || user.email; 
+        let displayAvatar = user.user_metadata?.avatar_url 
+            ? `${user.user_metadata.avatar_url}?t=${new Date().getTime()}` 
+            : null;
+
+        // Ưu tiên 1: Email Admin cứng
         if (user.email === 'ducnt198x@gmail.com') {
-            setRole('admin');
-        } else {
-            const { data: profile } = await supabase
-                .from('users')
-                .select('role, avatar_url, full_name')
-                .eq('id', user.id)
-                .single();
-            
-            if (profile) {
-                setRole(profile.role || 'staff');
-                setAvatarUrl(profile.avatar_url);
-                setUserName(profile.full_name || user.user_metadata?.full_name || 'Staff');
-            } else {
-                setRole(user.user_metadata?.role || 'staff');
-                setUserName(user.user_metadata?.full_name || 'Staff');
+            userRole = 'admin';
+        }
+
+        // Ưu tiên 2: Database (users table)
+        // Lấy dữ liệu mới nhất từ bảng users để ghi đè metadata
+        const { data: profile } = await supabase
+            .from('users')
+            .select('role, avatar_url, full_name')
+            .eq('id', user.id)
+            .single();
+        
+        if (profile) {
+            // Cập nhật role nếu không phải admin cứng
+            if (user.email !== 'ducnt198x@gmail.com') {
+                userRole = profile.role || user.user_metadata?.role || 'staff';
+            }
+            // QUAN TRỌNG: Cập nhật tên hiển thị từ DB nếu có
+            if (profile.full_name) {
+                displayName = profile.full_name;
+            }
+            // Cập nhật Avatar
+            if (profile.avatar_url) {
+                displayAvatar = `${profile.avatar_url}?t=${new Date().getTime()}`;
             }
         }
+
+        setRole(userRole);
+        setUserName(displayName); // <-- State userName sẽ hiển thị đúng tên thật
+        setAvatarUrl(displayAvatar);
       }
     };
     fetchUser();
@@ -105,64 +126,55 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView }) =
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
+      
       if (user) {
         const fileExt = selectedFile.name.split('.').pop();
-        const filePath = `${user.id}-${Date.now()}.${fileExt}`;
+        const fileName = `${user.id}-${Date.now()}.${fileExt}`;
 
-        // Attempt Upload
-        let { error: uploadError } = await supabase.storage
-            .from('avatars')
-            .upload(filePath, selectedFile, { upsert: true });
+        // 1. SỬA TÊN BUCKET THÀNH CHỮ THƯỜNG 'avatars'
+        const { error: uploadError } = await supabase.storage
+            .from('avatars') 
+            .upload(fileName, selectedFile, { upsert: true });
 
-        // FIX: If bucket not found, try to create it (if permissions allow)
-        if (uploadError && (uploadError.message.includes('Bucket not found') || (uploadError as any).statusCode === '404')) {
-            console.log("Bucket 'avatars' not found. Attempting to create...");
-            const { error: createError } = await supabase.storage.createBucket('avatars', { 
-                public: true,
-                allowedMimeTypes: ['image/*'],
-                fileSizeLimit: 2097152 // 2MB
-            });
+        if (uploadError) throw uploadError;
 
-            if (!createError) {
-                // Retry upload if creation succeeded
-                const { error: retryError } = await supabase.storage
-                    .from('avatars')
-                    .upload(filePath, selectedFile, { upsert: true });
-                uploadError = retryError;
-            }
-        }
-
-        if (uploadError) {
-             if (uploadError.message.includes('Bucket not found')) {
-                 throw new Error("Storage bucket 'avatars' is missing. Please create a public bucket named 'avatars' in your Supabase project dashboard.");
-             }
-             throw uploadError;
-        }
-
+        // 2. Lấy Public URL từ bucket 'avatars'
         const { data: { publicUrl } } = supabase.storage
             .from('avatars')
-            .getPublicUrl(filePath);
+            .getPublicUrl(fileName);
 
-        // FIX: Include email and full_name in the upsert payload to satisfy constraints
+        // 3. Cập nhật Auth Metadata (để session không bị mất ảnh khi reload)
+        const { error: authError } = await supabase.auth.updateUser({
+            data: { avatar_url: publicUrl }
+        });
+        if (authError) throw authError;
+
+        // 4. Cập nhật Database
         const { error: dbError } = await supabase
             .from('users')
             .upsert({ 
                 id: user.id, 
                 avatar_url: publicUrl,
                 email: user.email,
-                full_name: userName 
+                full_name: user.full_name,
+                role: user.role 
             });
         
         if (dbError) throw dbError;
 
-        setAvatarUrl(publicUrl);
+        // 5. Làm mới session ngay lập tức
+        await supabase.auth.refreshSession();
+        
+        // Cập nhật State hiển thị (thêm timestamp để ép reload ảnh)
+        setAvatarUrl(`${publicUrl}?t=${new Date().getTime()}`);
+        
         setSelectedFile(null);
         setPreviewUrl(null);
         setShowProfileModal(false);
       }
     } catch (error: any) {
       console.error("Avatar upload failed:", error);
-      alert("Failed to update profile: " + error.message);
+      alert("Lỗi cập nhật: " + error.message);
     } finally {
       setIsSaving(false);
     }
