@@ -6,7 +6,7 @@ import { supabase } from '../supabase';
 import { printTestTicket } from '../utils/printService';
 
 interface SettingsProps {
-  onLogout: () => void;
+  onLogout: () => void; 
 }
 
 export const Settings: React.FC<SettingsProps> = ({ onLogout }) => {
