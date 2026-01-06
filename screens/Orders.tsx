@@ -4,7 +4,7 @@ import { Order } from '../types';
 import { useCurrency } from '../CurrencyContext';
 import { useTheme } from '../ThemeContext';
 import { supabase } from '../supabase';
-import { processOrderCompletion } from '../utils';
+import { processOrderCompletion } from '../utils'; 
 import { PaymentModal } from '../components/PaymentModal';
 
 // IMPORT MỚI: Service in ấn iframe
