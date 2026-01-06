@@ -12,7 +12,7 @@ import { CurrencyProvider } from './CurrencyContext';
 import { ThemeProvider, useTheme } from './ThemeContext'; // Import useTheme
 import { supabase } from './supabase';
 
-function AppContent() {
+function AppContent() { 
   const [currentView, setCurrentView] = useState<View>('login');
   const { brightness } = useTheme(); // Get brightness from context
 
