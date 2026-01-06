@@ -4,7 +4,7 @@ import {
   Save, ScrollText, Minus, ArrowDownUp, AlertCircle, 
   ShoppingCart, Upload, Utensils, Check,
   Armchair, DollarSign, CreditCard, ArrowRightLeft, Users,
-  ShoppingBag, ChevronUp
+  ShoppingBag, ChevronUp 
 } from 'lucide-react';
 import { MenuItem, InventoryItem, MenuItemIngredient } from '../types';
 import { supabase, isSupabaseConfigured } from '../supabase';
