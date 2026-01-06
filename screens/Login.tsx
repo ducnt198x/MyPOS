@@ -11,7 +11,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const { t } = useTheme();
   const [isSignUp, setIsSignUp] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false); 
   
   // Form State
   const [email, setEmail] = useState('');
