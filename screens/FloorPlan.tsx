@@ -5,7 +5,7 @@ import {
   X, Users, Type, AlertTriangle, Maximize2, ArrowRightLeft, Check, Grid, MoreHorizontal
 } from 'lucide-react';
 import { useCurrency } from '../CurrencyContext';
-import { useTheme } from '../ThemeContext';
+import { useTheme } from '../ThemeContext'; 
 import { supabase } from '../supabase';
 import { MenuItem } from '../types';
 import { PaymentModal } from '../components/PaymentModal';
