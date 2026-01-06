@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { Dashboard } from './screens/Dashboard';
@@ -9,27 +10,26 @@ import { Login } from './screens/Login';
 import { Orders } from './screens/Orders';
 import { View } from './types';
 import { CurrencyProvider } from './CurrencyContext';
-import { ThemeProvider, useTheme } from './ThemeContext'; // Import useTheme
+import { ThemeProvider, useTheme } from './ThemeContext';
 import { supabase } from './supabase';
 
-function AppContent() { 
+function AppContent() {
   const [currentView, setCurrentView] = useState<View>('login');
-  const { brightness } = useTheme(); // Get brightness from context
+  const { brightness } = useTheme();
 
   useEffect(() => {
-    // Check active session on load
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    const checkUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        setCurrentView('dashboard');
+        handleRedirectAfterLogin(session.user);
       }
-    });
+    };
 
-    // Listen for auth state changes (login/logout)
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    checkUser();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session) {
-        setCurrentView('dashboard');
+        handleRedirectAfterLogin(session.user);
       } else {
         setCurrentView('login');
       }
@@ -37,6 +37,25 @@ function AppContent() {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  const handleRedirectAfterLogin = async (user: any) => {
+    if (user.email === 'ducnt198x@gmail.com') {
+      setCurrentView('dashboard');
+      return;
+    }
+
+    const { data: profile } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (profile?.role === 'admin') {
+      setCurrentView('dashboard');
+    } else {
+      setCurrentView('floorplan');
+    }
+  };
 
   const renderView = () => {
     switch (currentView) {
@@ -53,34 +72,21 @@ function AppContent() {
       case 'settings':
         return <Settings onLogout={() => setCurrentView('login')} />;
       default:
-        return <Dashboard />;
+        return <FloorPlan />;
     }
   };
 
   if (currentView === 'login') {
-    return <Login onLogin={() => setCurrentView('dashboard')} />;
+    return <Login onLogin={() => {}} />; // Redirection is handled by auth listener
   }
 
   return (
-    // FIX LAYOUT:
-    // Mobile/Tablet (< 1024px): flex-col. The Sidebar component renders a FIXED bottom bar.
-    // Desktop (>= 1024px): flex-row. The Sidebar component renders a STATIC left sidebar.
     <div className="flex flex-col lg:flex-row h-screen w-full bg-background text-text-main overflow-hidden relative">
-      
-      {/* Simulating Screen Brightness via Overlay */}
       <div 
         className="fixed inset-0 z-[9999] bg-black pointer-events-none transition-opacity duration-300"
         style={{ opacity: (100 - brightness) / 100 }}
       />
-
-      {/* Sidebar handles strictly mutually exclusive rendering internally */}
       <Sidebar currentView={currentView} onChangeView={setCurrentView} />
-      
-      {/* 
-         PADDING LOGIC:
-         - pb-[70px]: DEFAULT for Mobile/Tablet (< lg) to account for the Fixed Bottom Bar.
-         - lg:pb-0: On Desktop, remove bottom padding because there is no bottom bar.
-      */}
       <main className="flex-1 flex flex-col h-full overflow-hidden relative pb-[70px] lg:pb-0 w-full transition-all duration-300">
         {renderView()}
       </main>

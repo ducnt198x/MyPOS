@@ -160,13 +160,20 @@ const translations: Record<Language, Record<string, string>> = {
     'Seafood': 'Seafood',
     'Beverages': 'Beverages',
 
-    // Payment Modal
+    // Payment Modal & QR
     'Confirm Payment': 'Confirm Payment',
     'Total to Pay': 'Total to Pay',
     'Order #': 'Order #',
     'View': 'View',
     'Auto Print Receipt': 'Auto Print Receipt',
     'Complete Order': 'Complete Order',
+    'Scan to pay': 'Scan to pay',
+    'VietQR Payment': 'VietQR Payment',
+    'Account Owner': 'Account Owner',
+    'Account Number': 'Account Number',
+    'Bank': 'Bank',
+    'Memo': 'Memo',
+    'Bank settings required': 'Bank settings required in Settings',
 
     // Settings
     'System Settings': 'System Settings',
@@ -181,6 +188,11 @@ const translations: Record<Language, Record<string, string>> = {
     'Brightness': 'Brightness',
     'Adjust screen brightness': 'Adjust simulated screen brightness',
     'Hardware & Devices': 'Hardware & Devices',
+    'Bank Configuration': 'Bank Configuration',
+    'VietQR Setup': 'Setup bank account for VietQR payments',
+    'Save Settings': 'Save Settings',
+    'Settings Saved': 'Settings Saved',
+    'Select Bank': 'Select Bank',
     'Network Printer': 'Network Printer (LAN/WiFi)',
     'Printer Name': 'Printer Name',
     'IP Address': 'IP Address',
@@ -363,13 +375,20 @@ const translations: Record<Language, Record<string, string>> = {
     'Seafood': 'Hải sản',
     'Beverages': 'Đồ uống',
 
-    // Payment Modal
+    // Payment Modal & QR
     'Confirm Payment': 'Xác nhận thanh toán',
     'Total to Pay': 'Tổng tiền thanh toán',
     'Order #': 'Đơn hàng #',
     'View': 'Xem',
     'Auto Print Receipt': 'Tự động in hóa đơn',
     'Complete Order': 'Hoàn tất đơn hàng',
+    'Scan to pay': 'Quét mã để thanh toán',
+    'VietQR Payment': 'Thanh toán VietQR',
+    'Account Owner': 'Tên chủ tài khoản',
+    'Account Number': 'Số tài khoản',
+    'Bank': 'Ngân hàng',
+    'Memo': 'Nội dung',
+    'Bank settings required': 'Vui lòng cấu hình tài khoản trong Cài đặt',
 
     // Settings
     'System Settings': 'Cài đặt hệ thống',
@@ -384,6 +403,11 @@ const translations: Record<Language, Record<string, string>> = {
     'Brightness': 'Độ sáng',
     'Adjust screen brightness': 'Điều chỉnh độ sáng giả lập',
     'Hardware & Devices': 'Phần cứng & Thiết bị',
+    'Bank Configuration': 'Cấu hình Ngân hàng',
+    'VietQR Setup': 'Cài đặt tài khoản ngân hàng nhận VietQR',
+    'Save Settings': 'Lưu cấu hình',
+    'Settings Saved': 'Đã lưu cấu hình',
+    'Select Bank': 'Chọn ngân hàng',
     'Network Printer': 'Máy in mạng (LAN/WiFi)',
     'Printer Name': 'Tên máy in',
     'IP Address': 'Địa chỉ IP',

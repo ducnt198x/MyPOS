@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef } from 'react';
 import { 
   LayoutDashboard, 
@@ -18,7 +19,7 @@ import {
 } from 'lucide-react';
 import { View } from '../types';
 import { supabase } from '../supabase';
-import { useTheme } from '../ThemeContext'; 
+import { useTheme } from '../ThemeContext';
 
 interface SidebarProps {
   currentView: View;
@@ -33,7 +34,7 @@ interface NavItem {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView }) => {
-  const { t } = useTheme(); // Use translation hook
+  const { t } = useTheme();
   const [role, setRole] = useState<'admin' | 'staff'>('staff');
   const [userName, setUserName] = useState('');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -41,7 +42,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView }) =
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showMobileMoreMenu, setShowMobileMoreMenu] = useState(false);
 
-  // Avatar Upload State
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -68,7 +68,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView }) =
             if (profile.avatar_url) displayAvatar = `${profile.avatar_url}?t=${new Date().getTime()}`;
         }
         setRole(userRole);
-        setUserName(displayName); 
+        setUserName(displayName || ''); 
         setAvatarUrl(displayAvatar);
       }
     };
@@ -101,7 +101,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView }) =
         if (uploadError) throw uploadError;
         const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(fileName);
         await supabase.auth.updateUser({ data: { avatar_url: publicUrl } });
-        await supabase.from('users').upsert({ id: user.id, avatar_url: publicUrl, email: user.email, full_name: user.full_name, role: user.role });
+        await supabase.from('users').upsert({ id: user.id, avatar_url: publicUrl, email: user.email, full_name: userName, role: role });
         await supabase.auth.refreshSession();
         setAvatarUrl(`${publicUrl}?t=${new Date().getTime()}`); setSelectedFile(null); setPreviewUrl(null); setShowProfileModal(false);
       }
@@ -111,17 +111,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView }) =
   const handleCloseModal = () => { setShowProfileModal(false); setSelectedFile(null); setPreviewUrl(null); };
 
   const mainItems: NavItem[] = [
-    { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+    ...(role === 'admin' ? [{ id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' }] : []),
     { id: 'menu', icon: UtensilsCrossed, label: 'Menu' },
     { id: 'floorplan', icon: Grid, label: 'Tables' },
     { id: 'orders', icon: Receipt, label: 'Orders', badge: pendingCount > 0 ? pendingCount : undefined },
+    { id: 'settings', icon: Settings, label: 'Settings' }
   ];
 
   const secondaryItems: NavItem[] = [
-    ...(role === 'admin' ? [
-      { id: 'inventory', icon: Package, label: 'Stock' },
-      { id: 'settings', icon: Settings, label: 'Settings' }
-    ] : [])
+    ...(role === 'admin' ? [{ id: 'inventory', icon: Package, label: 'Stock' }] : [])
   ];
 
   const handleMobileNavClick = (view: View) => { onChangeView(view); setShowMobileMoreMenu(false); }
@@ -135,7 +133,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView }) =
           className={
             isMobile 
               ? `flex flex-col items-center justify-center w-full h-full gap-1 active:scale-90 transition-transform relative ${isActive ? 'text-primary' : 'text-secondary'}`
-              : `flex items-center gap-3 px-3 py-3 rounded-lg transition-all group w-full text-left relative ${isActive ? 'bg-primary/10 text-primary border border-primary/20' : 'hover:bg-surface text-secondary hover:text-text-main'}`
+              : `flex items-center gap-3 px-3 py-3 rounded-lg transition-all group w-full text-left relative ${isActive ? 'bg-primary/10 text-primary border-primary/20' : 'hover:bg-surface text-secondary hover:text-text-main'}`
           }
         >
           {isMobile ? (
@@ -165,11 +163,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView }) =
   return (
     <>
       <nav className="fixed bottom-0 left-0 w-full bg-background/95 backdrop-blur-md border-t border-border flex justify-around items-center h-[70px] z-50 px-2 pb-safe lg:hidden transition-colors">
-        {mainItems.map(item => renderIconNav(item, true))}
+        {mainItems.slice(0, 4).map(item => renderIconNav(item, true))}
         
         <button 
           onClick={() => setShowMobileMoreMenu(true)} 
-          className={`flex flex-col items-center justify-center w-full h-full gap-1 active:scale-90 transition-transform ${secondaryItems.some(i => i.id === currentView) ? 'text-primary' : 'text-secondary'}`}
+          className={`flex flex-col items-center justify-center w-full h-full gap-1 active:scale-90 transition-transform ${[...secondaryItems, ...mainItems.slice(4)].some(i => i.id === currentView) ? 'text-primary' : 'text-secondary'}`}
         >
           <div className="p-1">
              {avatarUrl ? (
@@ -246,7 +244,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView }) =
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                {secondaryItems.map(item => (
+                {[...mainItems.slice(4), ...secondaryItems].map(item => (
                   <button
                     key={item.id}
                     onClick={() => handleMobileNavClick(item.id as View)}

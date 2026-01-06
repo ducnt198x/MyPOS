@@ -6,7 +6,7 @@ const getEnv = (key: string) => {
   if (typeof import.meta !== 'undefined' && import.meta.env) {
     // @ts-ignore
     return import.meta.env[key] || import.meta.env[`VITE_${key}`];
-  } 
+  }
   return '';
 };
 

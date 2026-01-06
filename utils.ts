@@ -9,7 +9,7 @@ export const processOrderCompletion = async (orderId: string, paymentMethod: str
     // 1. Fetch Order Items to determine what to deduct from manual finished goods stock
     const { data: orderItems, error: itemsError } = await supabase
       .from('order_items')
-      .select('quantity, menu_item_id') 
+      .select('quantity, menu_item_id')
       .eq('order_id', orderId);
 
     if (itemsError) throw itemsError;

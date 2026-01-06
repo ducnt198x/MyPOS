@@ -1,10 +1,11 @@
+
 import React, { useEffect, useState, useRef } from 'react';
 import { 
   Search, Plus, Edit, Trash2, Loader2, X, Image, 
   Save, ScrollText, Minus, ArrowDownUp, AlertCircle, 
   ShoppingCart, Upload, Utensils, Check,
   Armchair, DollarSign, CreditCard, ArrowRightLeft, Users,
-  ShoppingBag, ChevronUp 
+  ShoppingBag, ChevronUp
 } from 'lucide-react';
 import { MenuItem, InventoryItem, MenuItemIngredient } from '../types';
 import { supabase, isSupabaseConfigured } from '../supabase';
@@ -17,6 +18,7 @@ export const Menu: React.FC = () => {
   const [items, setItems] = useState<MenuItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
+  const [role, setRole] = useState<'admin' | 'staff'>('staff');
   
   // Filters & Sorting
   const [categoryFilter, setCategoryFilter] = useState('All');
@@ -46,14 +48,22 @@ export const Menu: React.FC = () => {
     name: '', category: 'Coffee', price: '', stock: '', description: '', image: '', status: 'In Stock' as 'In Stock' | 'Out of Stock' 
   });
   
-  // Recipe State
-  const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
-  const [recipeIngredients, setRecipeIngredients] = useState<MenuItemIngredient[]>([]);
-
   useEffect(() => {
+    const fetchUserRole = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        if (user.email === 'ducnt198x@gmail.com') {
+          setRole('admin');
+        } else {
+          const { data } = await supabase.from('users').select('role').eq('id', user.id).single();
+          if (data) setRole(data.role as 'admin' | 'staff');
+        }
+      }
+    };
+
     if (isSupabaseConfigured()) {
         fetchMenu();
-        fetchInventory();
+        fetchUserRole();
     } else {
         setLoading(false);
         setErrorMsg('Database not configured. Please go to Settings.');
@@ -77,16 +87,6 @@ export const Menu: React.FC = () => {
     }
   };
 
-  const fetchInventory = async () => {
-    try {
-        const { data } = await supabase.from('inventory').select('*').order('name');
-        if (data) {
-            // @ts-ignore
-            setInventoryItems(data);
-        }
-    } catch (e) { console.error(e); }
-  };
-
   const fetchAvailableTables = async () => {
       const { data: allTables } = await supabase.from('tables').select('*');
       const { data: activeOrders } = await supabase.from('orders').select('table_id').in('status', ['Pending', 'Cooking']);
@@ -94,12 +94,7 @@ export const Menu: React.FC = () => {
       if (allTables) {
           const occupiedIds = new Set(activeOrders?.map(o => o.table_id) || []);
           const available = allTables.filter(t => !occupiedIds.has(t.id) && t.id !== 'Takeaway' && t.id !== 'Counter');
-          
-          // NATURAL SORT (Fix: Sort available tables naturally)
-          const sortedAvailable = available.sort((a, b) => 
-              a.label.localeCompare(b.label, undefined, { numeric: true, sensitivity: 'base' })
-          );
-
+          const sortedAvailable = available.sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true, sensitivity: 'base' }));
           setAvailableTables(sortedAvailable);
       }
   };
@@ -117,7 +112,6 @@ export const Menu: React.FC = () => {
           if (orderError) throw orderError;
           const itemsPayload = cart.map(c => ({ order_id: orderId, menu_item_id: c.item.id, quantity: c.qty, price: c.item.price }));
           await supabase.from('order_items').insert(itemsPayload);
-          alert(`Takeaway order ${orderId} sent to kitchen!`);
           setCart([]); setShowCheckoutModal(false); setShowMobileCart(false);
       } catch (e: any) { alert('Error: ' + e.message); } finally { setIsProcessing(false); }
   };
@@ -135,7 +129,6 @@ export const Menu: React.FC = () => {
           if (orderError) throw orderError;
           const itemsPayload = cart.map(c => ({ order_id: orderId, menu_item_id: c.item.id, quantity: c.qty, price: c.item.price }));
           await supabase.from('order_items').insert(itemsPayload);
-          alert(`Table ${tableId} order placed!`);
           setCart([]); setShowCheckoutModal(false); setShowMobileCart(false);
       } catch (e: any) { alert('Error: ' + e.message); } finally { setIsProcessing(false); }
   };
@@ -169,13 +162,12 @@ export const Menu: React.FC = () => {
   const cartTotal = cart.reduce((sum, i) => sum + (i.item.price * i.qty), 0);
   const cartCount = cart.reduce((sum, i) => sum + i.qty, 0);
 
-  const openAddModal = () => { setEditingId(null); setNewItem({ name: '', category: 'Coffee', price: '', stock: '50', description: '', image: '', status: 'In Stock' }); setRecipeIngredients([]); setShowModal(true); };
+  const openAddModal = () => { setEditingId(null); setNewItem({ name: '', category: 'Coffee', price: '', stock: '50', description: '', image: '', status: 'In Stock' }); setShowModal(true); };
   const handleEditItem = async (item: MenuItem, e: React.MouseEvent) => { e.stopPropagation(); setEditingId(item.id); setNewItem({ name: item.name, category: item.category, price: String(item.price), stock: String(item.stock), description: item.description || '', image: item.image || '', status: item.stock > 0 ? 'In Stock' : 'Out of Stock' }); setShowModal(true); };
   const handleSaveItem = async () => { 
     if (!newItem.name || !newItem.price) return;
     try { setLoading(true); 
       const stockValue = newItem.status === 'Out of Stock' ? 0 : (Number(newItem.stock) || 0);
-      let itemId = editingId;
       if (editingId) { await supabase.from('menu_items').update({ name: newItem.name, category: newItem.category, price: Number(newItem.price), stock: stockValue, description: newItem.description, image: newItem.image }).eq('id', editingId); } 
       else { await supabase.from('menu_items').insert([{ name: newItem.name, category: newItem.category, price: Number(newItem.price), stock: stockValue, description: newItem.description, image: newItem.image }]); }
       setShowModal(false); await fetchMenu();
@@ -213,14 +205,13 @@ export const Menu: React.FC = () => {
 
   return (
     <div className="flex h-full w-full bg-background overflow-hidden flex-col lg:flex-row transition-colors">
-      
-      {/* LEFT: Menu Grid */}
       <div className="flex-1 flex flex-col h-full overflow-hidden border-r border-border w-full">
-        {/* Header */}
         <header className="bg-background/95 backdrop-blur z-10 border-b border-border px-4 py-3 lg:px-6 lg:py-4 landscape:py-2 flex flex-col gap-3 shrink-0">
             <div className="flex items-center justify-between">
                 <div><h2 className="text-lg lg:text-2xl font-bold text-text-main flex items-center gap-2"><Utensils className="text-primary" /> {t('Menu')}</h2><p className="text-secondary text-xs lg:text-sm hidden sm:block">{t('Manage items')}</p></div>
-                <button onClick={openAddModal} className="flex items-center gap-2 px-3 py-2 bg-surface border border-border rounded-lg hover:border-primary hover:text-text-main text-secondary transition-all font-bold text-xs lg:text-sm"><Plus size={16} /> <span className="hidden sm:inline">{t('Add Item')}</span></button>
+                {role === 'admin' && (
+                  <button onClick={openAddModal} className="flex items-center gap-2 px-3 py-2 bg-surface border border-border rounded-lg hover:border-primary hover:text-text-main text-secondary transition-all font-bold text-xs lg:text-sm"><Plus size={16} /> <span className="hidden sm:inline">{t('Add Item')}</span></button>
+                )}
             </div>
             <div className="flex gap-2 lg:gap-3">
                  <div className="relative flex-1"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-secondary" size={16} /><input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder={t('Search...')} className="w-full bg-surface text-text-main pl-9 pr-4 py-2 rounded-xl border border-border focus:ring-1 focus:ring-primary focus:border-primary outline-none text-sm font-medium"/></div>
@@ -233,7 +224,6 @@ export const Menu: React.FC = () => {
              </div>
         </header>
 
-        {/* Scrollable Grid */}
         <div className="flex-1 overflow-y-auto p-3 lg:p-6 custom-scrollbar bg-surface/50">
             {loading ? <div className="flex h-full items-center justify-center"><Loader2 className="animate-spin text-primary" size={32} /></div> : errorMsg ? <div className="flex h-full items-center justify-center text-red-400 font-bold gap-2"><AlertCircle /> {errorMsg}</div> : (
                 <div className="grid grid-cols-2 landscape:grid-cols-3 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 pb-20 lg:pb-0 landscape:pb-4">
@@ -241,7 +231,12 @@ export const Menu: React.FC = () => {
                         <div key={item.id} onClick={() => addToCart(item)} className={`group bg-surface rounded-xl overflow-hidden border border-border hover:border-primary transition-all duration-200 cursor-pointer active:scale-95 flex flex-col ${item.stock <= 0 ? 'opacity-60 grayscale' : ''}`}>
                             <div className="aspect-[4/3] bg-background/50 relative overflow-hidden">
                                 {item.image ? <img src={item.image} alt={item.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" /> : <div className="w-full h-full flex items-center justify-center text-secondary bg-border/30"><Image size={32} /></div>}
-                                <div className="absolute top-2 right-2 flex gap-1 lg:opacity-0 group-hover:opacity-100 transition-opacity"><button onClick={(e) => handleEditItem(item, e)} className="p-1.5 bg-black/50 text-white rounded hover:bg-primary hover:text-background"><Edit size={14}/></button><button onClick={(e) => handleDeleteItem(item.id, e)} className="p-1.5 bg-black/50 text-white rounded hover:bg-red-500 hover:text-white"><Trash2 size={14}/></button></div>
+                                {role === 'admin' && (
+                                  <div className="absolute top-2 right-2 flex gap-1 lg:opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button onClick={(e) => handleEditItem(item, e)} className="p-1.5 bg-black/50 text-white rounded hover:bg-primary hover:text-background transition-colors"><Edit size={14}/></button>
+                                    <button onClick={(e) => handleDeleteItem(item.id, e)} className="p-1.5 bg-black/50 text-white rounded hover:bg-red-500 hover:text-white transition-colors"><Trash2 size={14}/></button>
+                                  </div>
+                                )}
                                 {item.stock <= 0 && <div className="absolute inset-0 flex items-center justify-center bg-black/60"><span className="text-red-500 font-black rotate-[-12deg] border-2 border-red-500 px-2 py-1 rounded">SOLD OUT</span></div>}
                                 <div className="absolute bottom-2 left-2 bg-black/60 backdrop-blur px-2 py-0.5 rounded text-[10px] text-white font-bold border border-white/10">Stock: {item.stock}</div>
                             </div>
@@ -259,7 +254,6 @@ export const Menu: React.FC = () => {
         </div>
       </div>
 
-      {/* RIGHT: Desktop Cart */}
       <div className="hidden lg:flex w-80 bg-surface border-l border-border flex-col shadow-2xl shrink-0 z-20 h-full">
           <div className="h-14 lg:h-16 border-b border-border flex items-center justify-between px-4 lg:px-6 bg-background shrink-0">
               <h3 className="font-bold text-text-main flex items-center gap-2 text-sm lg:text-base"><ShoppingCart className="text-primary" size={20} /> {t('Current Order')}</h3>
@@ -267,7 +261,6 @@ export const Menu: React.FC = () => {
           <CartContent />
       </div>
 
-      {/* MOBILE FLOATING CART BAR */}
       <div className="lg:hidden fixed bottom-[80px] landscape:bottom-4 left-4 right-4 z-30 pointer-events-none">
         {cart.length > 0 && (
           <button 
@@ -290,7 +283,6 @@ export const Menu: React.FC = () => {
         )}
       </div>
 
-      {/* MOBILE FULLSCREEN CART MODAL */}
       {showMobileCart && (
          <div className="lg:hidden fixed inset-0 z-50 bg-surface flex flex-col animate-in slide-in-from-bottom duration-300">
              <div className="p-4 border-b border-border flex items-center justify-between bg-background">
@@ -301,7 +293,6 @@ export const Menu: React.FC = () => {
          </div>
       )}
 
-      {/* Add/Edit Modal */}
       {showModal && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="bg-surface border border-border rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
